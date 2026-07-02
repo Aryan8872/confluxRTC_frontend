@@ -13,3 +13,6 @@ export type ICE_CANDIDATE_EMIT={
     senderId:string;
     iceCandidate:RTCIceCandidate
 }
+export type PAGE_FRAME_EMIT={
+    frame:string;
+}

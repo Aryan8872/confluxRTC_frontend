@@ -3,6 +3,7 @@ import { socket } from "../lib/api/socket";
 import {
   ICE_CANDIDATE,
   JOIN_ROOM,
+  PAGE_FRAME,
   SDP_ANSWER,
   SDP_OFFER,
   USER_JOINED,
@@ -10,6 +11,7 @@ import {
 } from "../types/socket.message";
 import type {
   ICE_CANDIDATE_EMIT,
+  PAGE_FRAME_EMIT,
   SDP_ANSWER_EMIT,
   SDP_OFFER_EMIT,
   USER_JOINED_EMIT,
@@ -24,6 +26,8 @@ const Video = () => {
   };
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const localStreamRef = useRef<MediaStream | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -155,13 +159,29 @@ const Video = () => {
       }
     });
 
+    socket.on(PAGE_FRAME, (data: PAGE_FRAME_EMIT) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      // Create a new image object in memory
+      const img = new Image();
+      // When the image loads, draw it onto our canvas
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      };
+      img.src = `data:image/jpeg;base64,${data.frame}`;
+    });
+
     return () => {
       socket.off("connect");
       socket.off(USER_JOINED);
       socket.off(SDP_OFFER);
       socket.off(SDP_ANSWER);
       socket.off(ICE_CANDIDATE);
-      socket.off(USER_LEFT)
+      socket.off(USER_LEFT);
+      socket.off(PAGE_FRAME);
       socket.disconnect();
     };
   }, []);
@@ -176,6 +196,17 @@ const Video = () => {
       <p>{inRoom ? "online" : "offline"}</p>
       <div className="flex flex-row gap-3">
         <video id="localVideo" ref={localVideoRef} playsInline autoPlay></video>
+        {/* The Virtual Browser Canvas */}
+        <div>
+          <h3>Virtual Browser Stream</h3>
+          <canvas
+            ref={canvasRef}
+            width="800"
+            height="600"
+            style={{ border: "2px solid #334155", background: "#0f172a" }}
+          ></canvas>
+        </div>
+        
         <video
           id="remoteVideo"
           ref={remoteVideoRef}
